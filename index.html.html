@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CODM Loadout Builder — Extensive</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa4b2;--accent:#1fb6ff;--good:#16a34a;--bad:#ef4444}
+    *{box-sizing:border-box;font-family:Inter,Ui-sans-serif,system-ui,Segoe UI,Roboto,Arial}
+    body{margin:0;background:linear-gradient(180deg,#071024 0%,#071827 100%);color:#e6eef6}
+    header{padding:18px 24px;border-bottom:1px solid rgba(255,255,255,0.03);display:flex;align-items:center;gap:16px}
+    h1{font-size:18px;margin:0}
+    .wrap{display:grid;grid-template-columns:380px 1fr;gap:18px;padding:18px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);padding:14px;border-radius:10px}
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+    select,input,button,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    /* Force weapon dropdown text to black for readability as requested */
+    select.weapon-select, select.attachment-select { color: #000 !important; background: #fff !important; }
+    .section-title{font-weight:600;margin:8px 0 12px}
+    .attachments{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    .stat-bars{display:flex;gap:10px;margin-top:8px}
+    .stat{flex:1}
+    .bar{height:10px;background:rgba(255,255,255,0.06);border-radius:6px;overflow:hidden}
+    .bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#9b4dff)}
+    .preview{padding:14px}
+    .muted{color:var(--muted);font-size:13px}
+    .row{display:flex;gap:8px}
+    .row > *{flex:1}
+    .controls{display:flex;gap:8px;margin-top:10px}
+    button.primary{background:linear-gradient(90deg,var(--accent),#7c3aed);border:none;color:#021018;padding:10px 12px;border-radius:8px;font-weight:600}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04)}
+    .saved-list{max-height:220px;overflow:auto;margin-top:8px}
+    pre{background:#071022;padding:10px;border-radius:8px;color:#bfe7ff;overflow:auto}
+    .grid-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    footer{padding:12px;text-align:center;color:var(--muted);font-size:13px}
+    @media(max-width:900px){.wrap{grid-template-columns:1fr}header{flex-direction:column;align-items:flex-start}}
+  </style>
+</head>
+<body>
+  <header>
+    <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36'><rect width='36' height='36' rx='8' fill='%231fb6ff'/><text x='50%' y='55%' font-size='18' text-anchor='middle' font-family='Arial' fill='%23011112'>COD</text></svg>" alt="logo" style="width:44px;height:44px;border-radius:8px;"/>
+    <div>
+      <h1>CODM Loadout Builder — Extensive & Realistic</h1>
+      <div class="muted">Build, test & export mobile-style loadouts with attachments, perks and performance preview</div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <aside class="card">
+      <div class="section-title">Weapon & Base</div>
+      <label>Weapon Category</label>
+      <select id="category">
+        <option>Assault Rifle</option>
+        <option>SMG</option>
+        <option>Sniper</option>
+        <option>LMG</option>
+        <option>Shotgun</option>
+        <option>Pistol</option>
+        <option>Launcher</option>
+        <option>Melee</option>
+      </select>
+
+      <label style="margin-top:10px">Select Weapon</label>
+      <select id="weapon" class="weapon-select"></select>
+
+      <div class="section-title">Attachments (Gunsmith)</div>
+      <div class="attachments" id="attachments"></div>
+
+      <div class="section-title">Perks / Equipment</div>
+      <div class="grid-row">
+        <select id="perk1"><option>Quick Fix</option><option>Ghost</option><option>Lightweight</option><option>Fast Recover</option></select>
+        <select id="perk2"><option>Dead Silence</option><option>Tracker</option><option>Alert</option><option>Persistence</option></select>
+      </div>
+
+      <div class="section-title">Customization</div>
+      <label>Camouflage / Skin (preview only)</label>
+      <input id="skin" placeholder="Arctic Camo, Carbon Fiber, etc" />
+
+      <div class="controls">
+        <button class="primary" id="saveBtn">Save Loadout</button>
+        <button class="ghost" id="exportBtn">Export JSON</button>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="muted">Saved loadouts</div>
+        <div class="saved-list card" id="savedList" style="padding:8px"></div>
+      </div>
+    </aside>
+
+    <main>
+      <section class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div class="section-title">Live Preview & Stats</div>
+            <div class="muted">Choose attachments to see how they change damage, fire rate, range, accuracy and mobility.</div>
+          </div>
+          <div style="text-align:right">
+            <div class="muted">Test Output:</div>
+            <div id="dps" style="font-weight:700">DPS: —</div>
+          </div>
+        </div>
+
+        <div class="preview" id="previewArea">
+          <div style="display:flex;gap:12px;align-items:center">
+            <div style="width:110px;height:70px;border-radius:8px;background:#071827;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.03)"><img id="weaponImg" src="" alt="weapon" style="max-width:100%;max-height:100%"/></div>
+            <div>
+              <div id="weaponName" style="font-size:16px;font-weight:700; color:inherit;">—</div>
+              <div class="muted" id="weaponCat">—</div>
+              <div style="margin-top:8px" class="muted">Attachments: <span id="attSummary">—</span></div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <div class="stat-bars">
+              <div class="stat"><label>Damage</label><div class="bar"><i id="st-damage" style="width:40%"></i></div></div>
+              <div class="stat"><label>Fire Rate</label><div class="bar"><i id="st-fire" style="width:40%"></i></div></div>
+              <div class="stat"><label>Range</label><div class="bar"><i id="st-range" style="width:40%"></i></div></div>
+              <div class="stat"><label>Accuracy</label><div class="bar"><i id="st-acc" style="width:40%"></i></div></div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+            <div style="flex:1">
+              <label>Simulate Test</label>
+              <div class="row">
+                <select id="testMode"><option value="single">Single Target</option><option value="sustained">Sustained Fire (10s)</option><option value="burst">Burst (3 rounds)</option></select>
+                <button class="primary" id="runTest">Run Test</button>
+              </div>
+            </div>
+            <div style="width:260px">
+              <label>Test Output Log</label>
+              <pre id="testLog">Ready.</pre>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:12px">
+        <div class="section-title">Advanced Controls & Debug</div>
+        <div class="grid-row">
+          <div>
+            <label>Manual stat modifiers (percentage)</label>
+            <div class="row"><input id="modDamage" placeholder="Damage % (e.g. -5 or 10)"/><input id="modFire" placeholder="Fire rate %"/></div>
+            <div class="row" style="margin-top:8px"><input id="modRange" placeholder="Range %"/><input id="modAcc" placeholder="Accuracy %"/></div>
+          </div>
+          <div>
+            <label>Import Loadout JSON</label>
+            <textarea id="importArea" rows="6" placeholder='Paste exported JSON here'></textarea>
+            <div class="controls"><button id="importBtn" class="primary">Import</button><button id="clearBtn" class="ghost">Clear</button></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:12px">
+        <div class="section-title">Export / Share</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="copyJson" class="primary">Copy JSON to Clipboard</button>
+          <button id="downloadBtn" class="ghost">Download .json</button>
+          <button id="randomize" class="ghost">Randomize Loadout</button>
+        </div>
+        <div style="margin-top:10px">
+          <label>Exported JSON</label>
+          <pre id="exportArea">{}</pre>
+        </div>
+      </section>
+
+      <footer class="card" style="margin-top:12px">Tip: This is a simulator for planning loadouts. Values are approximations based on typical CODM-style balance.</footer>
+    </main>
+  </div>
+
+  <script>
+  // --- Weapons (expanded; AK117 included) ---
+  const weapons = {
+    'Assault Rifle': [
+      {id:'m4',name:'M4',dmg:30,fire:720,range:55,acc:74,img:''},
+      {id:'ak47',name:'AK-47',dmg:33,fire:555,range:60,acc:65,img:''},
+      {id:'ak117',name:'AK117',dmg:25,fire:770,range:52,acc:69,img:''}, // added AK117
+      {id:'asm10',name:'ASM10',dmg:34,fire:570,range:58,acc:70,img:''},
+      {id:'bk57',name:'BK57',dmg:27,fire:720,range:50,acc:66,img:''},
+      {id:'lk24',name:'LK24',dmg:26,fire:660,range:54,acc:74,img:''},
+      {id:'icr1',name:'ICR-1',dmg:30,fire:630,range:58,acc:82,img:''},
+      {id:'kn44',name:'KN-44',dmg:32,fire:630,range:55,acc:68,img:''},
+      {id:'manowar',name:'Man-O-War',dmg:37,fire:565,range:56,acc:69,img:''},
+      {id:'type25',name:'Type 25',dmg:24,fire:857,range:48,acc:60,img:''},
+      {id:'hvk30',name:'HVK-30',dmg:28,fire:710,range:52,acc:72,img:''},
+      {id:'hbra3',name:'HBRa3',dmg:30,fire:700,range:52,acc:70,img:''},
+      {id:'m16',name:'M16',dmg:33,fire:540,range:60,acc:82,img:''},
+      {id:'drh',name:'DR-H',dmg:32,fire:620,range:56,acc:70,img:''},
+      {id:'peacekeeper',name:'Peacekeeper MK2',dmg:30,fire:652,range:55,acc:76,img:''},
+      {id:'m13',name:'M13',dmg:24,fire:900,range:54,acc:78,img:''},
+      {id:'asval',name:'AS VAL',dmg:28,fire:900,range:50,acc:66,img:''},
+      {id:'kilo141',name:'Kilo 141',dmg:27,fire:790,range:56,acc:75,img:''},
+      {id:'krig6',name:'Krig 6',dmg:29,fire:720,range:58,acc:80,img:''},
+      {id:'swordfish',name:'Swordfish',dmg:32,fire:540,range:62,acc:82,img:''},
+      {id:'cr56',name:'CR-56 AMAX',dmg:32,fire:620,range:57,acc:72,img:''}
+    ],
+    'SMG': [
+      {id:'qq9',name:'QQ9',dmg:26,fire:900,range:28,acc:65,img:''},
+      {id:'rus79u',name:'RUS-79U',dmg:28,fire:770,range:38,acc:68,img:''},
+      {id:'msmc',name:'MSMC',dmg:25,fire:880,range:24,acc:60,img:''},
+      {id:'hg40',name:'HG 40',dmg:32,fire:600,range:45,acc:70,img:''},
+      {id:'pdw57',name:'PDW-57',dmg:28,fire:770,range:32,acc:64,img:''},
+      {id:'pharo',name:'Pharo',dmg:28,fire:850,range:30,acc:68,img:''},
+      {id:'chicom',name:'Chicom',dmg:24,fire:950,range:26,acc:70,img:''},
+      {id:'razorback',name:'Razorback',dmg:30,fire:705,range:45,acc:72,img:''},
+      {id:'gks',name:'GKS',dmg:28,fire:660,range:42,acc:78,img:''},
+      {id:'cordite',name:'Cordite',dmg:26,fire:800,range:40,acc:70,img:''},
+      {id:'fennec',name:'Fennec',dmg:23,fire:1111,range:25,acc:60,img:''},
+      {id:'qxr',name:'QXR',dmg:26,fire:870,range:34,acc:67,img:''},
+      {id:'cbr4',name:'CBR4',dmg:25,fire:800,range:38,acc:65,img:''},
+      {id:'pp19',name:'PP19 Bizon',dmg:27,fire:650,range:40,acc:74,img:''},
+      {id:'ppsh41',name:'PPSh-41',dmg:24,fire:915,range:32,acc:62,img:''},
+      {id:'switchblade',name:'Switchblade X9',dmg:24,fire:909,range:30,acc:66,img:''},
+      {id:'mac10',name:'MAC-10',dmg:24,fire:1111,range:26,acc:58,img:''}
+    ],
+    'Sniper': [
+      {id:'dlq33',name:'DL Q33',dmg:120,fire:40,range:100,acc:95,img:''},
+      {id:'locus',name:'Locus',dmg:95,fire:50,range:95,acc:90,img:''},
+      {id:'koshka',name:'Koshka',dmg:115,fire:45,range:98,acc:92,img:''},
+      {id:'outlaw',name:'Outlaw',dmg:85,fire:70,range:90,acc:85,img:''},
+      {id:'arctic50',name:'Arctic .50',dmg:85,fire:60,range:95,acc:87,img:''},
+      {id:'rytec',name:'Rytec AMR',dmg:120,fire:42,range:98,acc:88,img:''},
+      {id:'xpr50',name:'XPR-50',dmg:80,fire:75,range:90,acc:82,img:''},
+      {id:'m21ebr',name:'M21 EBR',dmg:75,fire:80,range:88,acc:84,img:''}
+    ],
+    'LMG': [
+      {id:'rpd',name:'RPD',dmg:45,fire:520,range:55,acc:50,img:''},
+      {id:'m4lmg',name:'M4LMG',dmg:46,fire:600,range:58,acc:58,img:''},
+      {id:'s36',name:'S36',dmg:42,fire:720,range:54,acc:52,img:''},
+      {id:'ul736',name:'UL736',dmg:44,fire:620,range:58,acc:62,img:''},
+      {id:'chopper',name:'Chopper',dmg:40,fire:720,range:52,acc:60,img:''},
+      {id:'holger26',name:'Holger-26',dmg:40,fire:650,range:60,acc:60,img:''},
+      {id:'hades',name:'Hades',dmg:41,fire:707,range:56,acc:64,img:''},
+      {id:'pkm',name:'PKM',dmg:46,fire:540,range:62,acc:58,img:''}
+    ],
+    'Shotgun': [
+      {id:'by15',name:'BY15',dmg:90,fire:70,range:18,acc:24,img:''},
+      {id:'hs0405',name:'HS0405',dmg:100,fire:30,range:20,acc:30,img:''},
+      {id:'krm262',name:'KRM-262',dmg:90,fire:71,range:20,acc:26,img:''},
+      {id:'hs2126',name:'HS2126',dmg:70,fire:220,range:16,acc:22,img:''},
+      {id:'striker',name:'Striker',dmg:70,fire:150,range:22,acc:34,img:''},
+      {id:'echo',name:'Echo',dmg:80,fire:120,range:24,acc:32,img:''},
+      {id:'r90',name:'R9-0',dmg:100,fire:80,range:20,acc:28,img:''},
+      {id:'jak12',name:'JAK-12',dmg:78,fire:180,range:22,acc:30,img:''},
+      {id:'shorty',name:'Shorty',dmg:85,fire:120,range:15,acc:22,img:''}
+    ],
+    'Pistol': [
+      {id:'mw11',name:'MW11',dmg:30,fire:400,range:24,acc:60,img:''},
+      {id:'j358',name:'J358',dmg:75,fire:180,range:32,acc:58,img:''},
+      {id:'50gs',name:'.50 GS',dmg:85,fire:200,range:30,acc:55,img:''},
+      {id:'renetti',name:'Renetti',dmg:28,fire:450,range:25,acc:62,img:''},
+      {id:'crossbow',name:'Crossbow',dmg:120,fire:40,range:60,acc:70,img:''}
+    ],
+    'Launcher': [
+      {id:'fhj18',name:'FHJ-18',dmg:150,fire:30,range:80,acc:50,img:''},
+      {id:'smrs',name:'SMRS',dmg:130,fire:35,range:75,acc:55,img:''}
+    ],
+    'Melee': [
+      {id:'knife',name:'Knife',dmg:100,fire:200,range:5,acc:90,img:''},
+      {id:'katana',name:'Katana',dmg:120,fire:260,range:6,acc:95,img:''}
+    ]
+  };
+
+  // --- Category-specific gunsmith-style attachments (mimic CODM) ---
+  // Each weapon class maps slot names to arrays of real-ish CODM options (id, name, stat deltas)
+  const attachmentsCatalogByCategory = {
+    'Assault Rifle': {
+      'Muzzle': [
+        {id:'mon_sup',name:'Monolithic Suppressor',dmg:0,fire:0,range:0,acc:4,mob:-2},
+        {id:'tac_sup',name:'Tactical Suppressor',dmg:-2,fire:0,range:-3,acc:3,mob:-1},
+        {id:'comp',name:'Compensator',dmg:0,fire:0,range:0,acc:6,mob:-3}
+      ],
+      'Barrel': [
+        {id:'owc_marksman',name:'OWC Marksman',dmg:6,fire:0,range:8,acc:2,mob:-5},
+        {id:'owc_ranger',name:'OWC Ranger',dmg:4,fire:0,range:6,acc:2,mob:-4},
+        {id:'mip_light',name:'MIP Light Barrel',dmg:0,fire:0,range:0,acc:-2,mob:6}
+      ],
+      'Stock': [
+        {id:'no_stock',name:'No Stock',dmg:0,fire:6,range:-4,acc:-8,mob:8},
+        {id:'owc_skel',name:'OWC Skeleton Stock',dmg:0,fire:0,range:0,acc:4,mob:-3},
+        {id:'rtc_steady',name:'RTC Steady Stock',dmg:0,fire:0,range:0,acc:10,mob:-10}
+      ],
+      'Underbarrel': [
+        {id:'foregrip',name:'Operator Foregrip',dmg:0,fire:0,range:0,acc:8,mob:-3},
+        {id:'tactical_fg',name:'Tactical Foregrip A',dmg:0,fire:0,range:0,acc:6,mob:-2},
+        {id:'angled',name:'Angled Grip',dmg:0,fire:4,range:-2,acc:-2,mob:4}
+      ],
+      'Ammunition': [
+        {id:'ext_mag_a',name:'Extended Mag A',dmg:0,fire:0,range:0,acc:0,mob:-2},
+        {id:'fast_mag',name:'Fast Mag',dmg:0,fire:6,range:0,acc:0,mob:2},
+        {id:'fmj',name:'FMJ',dmg:8,fire:0,range:6,acc:-2,mob:-2}
+      ],
+      'Optic': [
+        {id:'red',name:'Red Dot',dmg:0,fire:0,range:0,acc:4,mob:0},
+        {id:'holo',name:'Holographic',dmg:0,fire:0,range:0,acc:3,mob:0},
+        {id:'3x',name:'3x Scope',dmg:0,fire:0,range:6,acc:6,mob:-3}
+      ],
+      'Rear Grip': [
+        {id:'granulated',name:'Granulated Grip Tape',dmg:0,fire:0,range:0,acc:6,mob:0},
+        {id:'stippled',name:'Stippled Grip Tape',dmg:0,fire:6,range:0,acc:2,mob:4},
+        {id:'rubber',name:'Rubberized Grip Tape',dmg:0,fire:0,range:0,acc:4,mob:-1}
+      ]
+    },
+
+    'SMG': {
+      'Muzzle': [
+        {id:'smg_comp',name:'Compensator',dmg:0,fire:0,range:0,acc:6,mob:-3},
+        {id:'smg_sup',name:'Sound Suppressor',dmg:-1,fire:0,range:-2,acc:3,mob:-1}
+      ],
+      'Barrel': [
+        {id:'short_barrel',name:'Short Barrel',dmg:-3,fire:8,range:-6,acc:-4,mob:6},
+        {id:'long_barrel_smg',name:'Long Barrel (SMG)',dmg:4,fire:0,range:6,acc:2,mob:-4}
+      ],
+      'Stock': [
+        {id:'no_stock_smg',name:'No Stock',dmg:0,fire:8,range:-4,acc:-6,mob:8},
+        {id:'light_stock',name:'Lightweight Stock',dmg:0,fire:4,range:0,acc:-4,mob:5}
+      ],
+      'Underbarrel': [
+        {id:'tac_fg',name:'Tactical Foregrip',dmg:0,fire:0,range:0,acc:6,mob:-2},
+        {id:'ang_fg',name:'Angled Grip',dmg:0,fire:4,range:-2,acc:-2,mob:4}
+      ],
+      'Ammunition': [
+        {id:'fast_mag_smg',name:'Fast Mag',dmg:0,fire:8,range:0,acc:0,mob:2},
+        {id:'extended_smg',name:'Extended Mag',dmg:0,fire:0,range:0,acc:0,mob:-2}
+      ],
+      'Optic': [
+        {id:'red',name:'Red Dot',dmg:0,fire:0,range:0,acc:4,mob:0},
+        {id:'holo',name:'Holographic',dmg:0,fire:0,range:0,acc:3,mob:0}
+      ],
+      'Rear Grip': [
+        {id:'stippled_smg',name:'Stippled Grip Tape',dmg:0,fire:6,range:0,acc:2,mob:4},
+        {id:'rgrip',name:'Rubberized Grip Tape',dmg:0,fire:0,range:0,acc:4,mob:-1}
+      ]
+    },
+
+    'Sniper': {
+      'Muzzle': [
+        {id:'snip_sup',name:'Light Suppressor',dmg:-2,fire:0,range:-2,acc:6,mob:-2},
+        {id:'snip_comp',name:'Compensator',dmg:0,fire:0,range:0,acc:6,mob:-3}
+      ],
+      'Barrel': [
+        {id:'owc_ranger_snip',name:'OWC Ranger',dmg:8,fire:0,range:10,acc:6,mob:-6},
+        {id:'long_snip',name:'Long Barrel (Sniper)',dmg:10,fire:0,range:12,acc:4,mob:-8}
+      ],
+      'Stock': [
+        {id:'tac_stock_snip',name:'Tactical Stock',dmg:0,fire:0,range:0,acc:8,mob:-6},
+        {id:'snip_light',name:'Lightweight Stock',dmg:0,fire:0,range:0,acc:-4,mob:8}
+      ],
+      'Underbarrel': [
+        {id:'snip_bipod',name:'Bipod',dmg:0,fire:0,range:0,acc:12,mob:-10}
+      ],
+      'Optic': [
+        {id:'4x',name:'4x Tactical Scope',dmg:0,fire:0,range:6,acc:10,mob:-6},
+        {id:'6x',name:'6x Scope',dmg:0,fire:0,range:10,acc:12,mob:-10}
+      ],
+      'Ammunition': [
+        {id:'snip_fmj',name:'FMJ',dmg:12,fire:0,range:6,acc:-2,mob:-2}
+      ]
+    },
+
+    'LMG': {
+      'Muzzle': [
+        {id:'lmg_sup',name:'Monolithic Suppressor',dmg:0,fire:0,range:0,acc:4,mob:-3},
+        {id:'lmg_comp',name:'Compensator',dmg:0,fire:0,range:0,acc:6,mob:-4}
+      ],
+      'Barrel': [
+        {id:'heavy_barrel',name:'Heavy Barrel',dmg:8,fire:0,range:8,acc:4,mob:-8},
+        {id:'light_barrel_lmg',name:'Light Barrel',dmg:0,fire:8,range:-4,acc:-2,mob:6}
+      ],
+      'Stock': [
+        {id:'rtc_stable_lmg',name:'RTC Steady Stock',dmg:0,fire:0,range:0,acc:10,mob:-10},
+        {id:'light_stock_lmg',name:'Light Stock',dmg:0,fire:6,range:0,acc:-6,mob:8}
+      ],
+      'Underbarrel': [
+        {id:'lmg_foregrip',name:'Operator Foregrip',dmg:0,fire:0,range:0,acc:8,mob:-3}
+      ],
+      'Ammunition': [
+        {id:'large_cal',name:'Large Caliber Ammo',dmg:10,fire:0,range:6,acc:-3,mob:-3},
+        {id:'extended_lmg',name:'Extended Mag',dmg:0,fire:0,range:0,acc:0,mob:-2}
+      ],
+      'Optic': [
+        {id:'red',name:'Red Dot',dmg:0,fire:0,range:0,acc:4,mob:0},
+        {id:'3x',name:'3x Scope',dmg:0,fire:0,range:6,acc:6,mob:-3}
+      ]
+    },
+
+    'Shotgun': {
+      'Muzzle': [
+        {id:'shot_choke',name:'Choke',dmg:6,fire:0,range:4,acc:2,mob:-2},
+        {id:'shot_sup',name:'Suppressor (Shotgun)',dmg:-4,fire:0,range:-4,acc:2,mob:-1}
+      ],
+      'Barrel': [
+        {id:'mip_shot',name:'MIP Extended Barrel',dmg:6,fire:0,range:6,acc:2,mob:-5},
+        {id:'short_barrel_shot',name:'Short Barrel',dmg:-6,fire:6,range:-6,acc:-4,mob:6}
+      ],
+      'Stock': [
+        {id:'shot_rtc',name:'RTC Steady Stock',dmg:0,fire:0,range:0,acc:10,mob:-10},
+        {id:'short_stock_shot',name:'Short Stock',dmg:0,fire:6,range:0,acc:-6,mob:8}
+      ],
+      'Underbarrel': [
+        {id:'shot_foregrip',name:'Tactical Foregrip',dmg:0,fire:0,range:0,acc:6,mob:-2}
+      ],
+      'Ammunition': [
+        {id:'slug',name:'Slug Ammo',dmg:12,fire:0,range:10,acc:-2,mob:-3},
+        {id:'buck',name:'Buckshot',dmg:0,fire:0,range:0,acc:0,mob:0}
+      ],
+      'Optic': [
+        {id:'reflex',name:'Reflex Sight',dmg:0,fire:0,range:0,acc:3,mob:0}
+      ]
+    },
+
+    'Pistol': {
+      'Muzzle': [
+        {id:'pistol_sup',name:'Pistol Suppressor',dmg:-2,fire:0,range:-3,acc:3,mob:-1},
+        {id:'pistol_comp',name:'Pistol Compensator',dmg:0,fire:0,range:0,acc:4,mob:-2}
+      ],
+      'Barrel': [
+        {id:'pistol_light',name:'MIP Light Barrel (Pistol)',dmg:0,fire:8,range:-2,acc:2,mob:6},
+        {id:'pistol_long',name:'Long Barrel (Pistol)',dmg:4,fire:0,range:6,acc:2,mob:-4}
+      ],
+      'Underbarrel': [
+        {id:'pistol_grip',name:'Small Grip',dmg:0,fire:0,range:0,acc:4,mob:0}
+      ],
+      'Ammunition': [
+        {id:'pistol_fmj',name:'FMJ (Pistol)',dmg:6,fire:0,range:4,acc:-1,mob:-1}
+      ],
+      'Optic': [
+        {id:'small_red',name:'Mini Red Dot',dmg:0,fire:0,range:0,acc:3,mob:0}
+      ]
+    },
+
+    'Launcher': {
+      // Launchers typically have no gunsmith attachments in CODM — keep minimal or none
+    },
+
+    'Melee': {
+      // Melee have no attachments
+    }
+  };
+
+  // --- DOM refs ---
+  const categoryEl = document.getElementById('category');
+  const weaponEl = document.getElementById('weapon');
+  const attachmentsEl = document.getElementById('attachments');
+  const weaponNameEl = document.getElementById('weaponName');
+  const weaponCatEl = document.getElementById('weaponCat');
+  const attSummary = document.getElementById('attSummary');
+  const stDamage = document.getElementById('st-damage');
+  const stFire = document.getElementById('st-fire');
+  const stRange = document.getElementById('st-range');
+  const stAcc = document.getElementById('st-acc');
+  const dpsEl = document.getElementById('dps');
+  const testLog = document.getElementById('testLog');
+  const exportArea = document.getElementById('exportArea');
+
+  const saveBtn = document.getElementById('saveBtn');
+  const savedList = document.getElementById('savedList');
+  const exportBtn = document.getElementById('exportBtn');
+  const copyJson = document.getElementById('copyJson');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const randomizeBtn = document.getElementById('randomize');
+  const runTest = document.getElementById('runTest');
+  const testMode = document.getElementById('testMode');
+  const importBtn = document.getElementById('importBtn');
+  const importArea = document.getElementById('importArea');
+  const clearBtn = document.getElementById('clearBtn');
+  const modDamage = document.getElementById('modDamage');
+  const modFire = document.getElementById('modFire');
+  const modRange = document.getElementById('modRange');
+  const modAcc = document.getElementById('modAcc');
+
+  // Helper: create select with class so we can style weapon options black
+  function makeSelect(className) {
+    const s = document.createElement('select');
+    if (className) s.classList.add(className);
+    return s;
+  }
+
+  // Populate weapons for selected category
+  function populateWeapons() {
+    const cat = categoryEl.value;
+    weaponEl.innerHTML = '';
+    (weapons[cat] || []).forEach(w=>{
+      const o = document.createElement('option');
+      o.value = w.id;
+      o.textContent = w.name;
+      // force black text inside select options by styling the select element (class applied in HTML/CSS)
+      weaponEl.appendChild(o);
+    });
+    // ensure weapon select shows black text (we use .weapon-select class in HTML/CSS)
+    updateWeapon();
+    renderAttachments();
+  }
+
+  // Render attachments UI per category (Gunsmith-like)
+  function renderAttachments(){
+    attachmentsEl.innerHTML = '';
+    const cat = categoryEl.value;
+    const catalog = attachmentsCatalogByCategory[cat] || {};
+    // If nothing (launchers/melee) show info
+    if(!Object.keys(catalog).length){
+      const notice = document.createElement('div');
+      notice.className = 'muted';
+      notice.textContent = 'No Gunsmith attachments available for this category.';
+      attachmentsEl.appendChild(notice);
+      return;
+    }
+    // For each slot in category's catalog
+    Object.keys(catalog).forEach(slot=>{
+      const wrap = document.createElement('div');
+      const label = document.createElement('label');
+      label.style.fontSize = '12px'; label.style.marginBottom = '6px';
+      label.textContent = slot;
+      const sel = document.createElement('select');
+      sel.className = 'attachment-select';
+      sel.dataset.slot = slot;
+      // add None option
+      const none = document.createElement('option');
+      none.value = 'none'; none.textContent = 'None';
+      sel.appendChild(none);
+      // add options
+      catalog[slot].forEach(a=>{
+        const o = document.createElement('option');
+        o.value = a.id;
+        o.textContent = a.name;
+        sel.appendChild(o);
+      });
+      sel.addEventListener('change', computeAndRender);
+      wrap.appendChild(label);
+      wrap.appendChild(sel);
+      attachmentsEl.appendChild(wrap);
+    });
+  }
+
+  function updateWeapon(){
+    const cat = categoryEl.value;
+    const wid = weaponEl.value || (weapons[cat] && weapons[cat][0] && weapons[cat][0].id);
+    const w = (weapons[cat] || []).find(x=>x.id===wid) || {name:'—', dmg:1, fire:100, range:10, acc:10};
+    document.getElementById('weaponName').textContent = w.name;
+    document.getElementById('weaponCat').textContent = cat;
+    // small SVG placeholder
+    document.getElementById('weaponImg').src = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='220' height='120'><rect width='100%' height='100%' rx='8' fill='rgba(255,255,255,0.02)'/><text x='50%' y='55%' text-anchor='middle' font-size='18' fill='%23cde6ff' font-family='Arial'>${w.name}</text></svg>`);
+    computeAndRender();
+  }
+
+  function getSelectedAttachments(){
+    const sels = attachmentsEl.querySelectorAll('select.attachment-select');
+    const chosen = [];
+    sels.forEach(sel=>{
+      const id = sel.value;
+      const slot = sel.dataset.slot;
+      if(id && id !== 'none'){
+        const options = attachmentsCatalogByCategory[categoryEl.value] && attachmentsCatalogByCategory[categoryEl.value][slot];
+        if(options){
+          const a = options.find(x=>x.id===id);
+          if(a) chosen.push({slot, ...a});
+        }
+      }
+    });
+    return chosen;
+  }
+
+  function computeStats(raw){
+    const mods = {dmg:0, fire:0, range:0, acc:0, mob:0};
+    const sel = getSelectedAttachments();
+    sel.forEach(a => { mods.dmg += (a.dmg||0); mods.fire += (a.fire||0); mods.range += (a.range||0); mods.acc += (a.acc||0); mods.mob += (a.mob||0); });
+
+    const manual = {dmg:parseFloat(modDamage.value)||0, fire:parseFloat(modFire.value)||0, range:parseFloat(modRange.value)||0, acc:parseFloat(modAcc.value)||0};
+
+    let dmg = raw.dmg + mods.dmg;
+    let fire = raw.fire * (1 + (mods.fire/100));
+    let range = raw.range + mods.range;
+    let acc = raw.acc + mods.acc;
+
+    dmg = dmg * (1 + manual.dmg/100);
+    fire = fire * (1 + manual.fire/100);
+    range = range * (1 + manual.range/100);
+    acc = acc * (1 + manual.acc/100);
+
+    dmg = Math.max(1, Math.round(dmg*10)/10);
+    fire = Math.max(10, Math.round(fire));
+    range = Math.round(range);
+    acc = Math.max(1, Math.round(acc));
+
+    const dps = Math.round(dmg * (fire/60) * 10)/10;
+    return {dmg, fire, range, acc, dps, chosen:sel};
+  }
+
+  function computeAndRender(){
+    const cat = categoryEl.value;
+    const w = (weapons[cat] && weapons[cat].find(x=>x.id===weaponEl.value)) || (weapons[cat] && weapons[cat][0]) || {dmg:1, fire:100, range:10, acc:10};
+    const s = computeStats(w);
+    document.getElementById('st-damage').style.width = Math.min(100, (s.dmg/ (w.dmg*1.5) * 100)) + '%';
+    document.getElementById('st-fire').style.width = Math.min(100, (s.fire/1200 * 100)) + '%';
+    document.getElementById('st-range').style.width = Math.min(100, (s.range/100 * 100)) + '%';
+    document.getElementById('st-acc').style.width = Math.min(100, (s.acc/100 * 100)) + '%';
+    dpsEl.textContent = 'DPS: ' + s.dps;
+    attSummary.textContent = s.chosen.map(a=>a.name).join(', ')||'None';
+    exportCurrent();
+  }
+
+  function exportCurrent(){
+    const loadout = buildLoadoutObject();
+    exportArea.textContent = JSON.stringify(loadout, null, 2);
+  }
+
+  function buildLoadoutObject(){
+    const cat = categoryEl.value;
+    const w = (weapons[cat] && weapons[cat].find(x=>x.id===weaponEl.value)) || (weapons[cat] && weapons[cat][0]);
+    const attachments = getSelectedAttachments().map(a=>({slot:a.slot,id:a.id,name:a.name}));
+    return {meta:{created:new Date().toISOString()}, weapon:{category:cat, id:w.id, name:w.name}, attachments, perks:[document.getElementById('perk1').value,document.getElementById('perk2').value], skin:document.getElementById('skin').value||null, stats:computeStats(w)};
+  }
+
+  // --- Save / Load / Saved list ---
+  function loadSaved(){
+    const raw = localStorage.getItem('codm_loadouts_v1');
+    const parsed = raw ? JSON.parse(raw) : [];
+    renderSaved(parsed);
+  }
+  function renderSaved(list){
+    savedList.innerHTML='';
+    if(!list.length){ savedList.innerHTML='<div class=\"muted\">No saved loadouts</div>'; return }
+    list.forEach((l,idx)=>{
+      const el = document.createElement('div'); el.style.padding='8px'; el.style.borderBottom='1px solid rgba(255,255,255,0.02)';
+      el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><div style='font-weight:700'>${l.weapon.name}</div><div class='muted' style='font-size:12px'>${l.weapon.category} — ${l.meta.created.split('T')[0]}</div></div><div style='display:flex;gap:6px'><button data-idx='${idx}' class='ghost small load'>Load</button><button data-idx='${idx}' class='ghost small del'>Del</button></div></div>`;
+      savedList.appendChild(el);
+    });
+    savedList.querySelectorAll('.load').forEach(b=>b.addEventListener('click',(e)=>{ const i = e.target.dataset.idx; loadFromIndex(i); }));
+    savedList.querySelectorAll('.del').forEach(b=>b.addEventListener('click',(e)=>{ const i = e.target.dataset.idx; deleteIndex(i); }));
+  }
+
+  function saveCurrent(){
+    const raw = localStorage.getItem('codm_loadouts_v1');
+    const list = raw?JSON.parse(raw):[]; const loadout = buildLoadoutObject(); list.unshift(loadout); localStorage.setItem('codm_loadouts_v1', JSON.stringify(list.slice(0,50)) ); loadSaved();
+  }
+  function loadFromIndex(i){ const list = JSON.parse(localStorage.getItem('codm_loadouts_v1')||'[]'); const l = list[i]; if(!l) return alert('Not found');
+    categoryEl.value = l.weapon.category; populateWeapons(); weaponEl.value = l.weapon.id; updateWeapon();
+    // apply attachments
+    attachmentsEl.querySelectorAll('select.attachment-select').forEach(s=>{ s.value='none'; const slot = s.dataset.slot; const chosen = (l.attachments||[]).find(a=>a.slot===slot); if(chosen) s.value = chosen.id; });
+    document.getElementById('perk1').value = l.perks[0] || document.getElementById('perk1').options[0].value;
+    document.getElementById('perk2').value = l.perks[1] || document.getElementById('perk2').options[0].value;
+    document.getElementById('skin').value = l.skin||'';
+    computeAndRender();
+  }
+  function deleteIndex(i){ const list = JSON.parse(localStorage.getItem('codm_loadouts_v1')||'[]'); list.splice(i,1); localStorage.setItem('codm_loadouts_v1', JSON.stringify(list)); loadSaved(); }
+
+  // --- Export / Import ---
+  function exportJson(){ const j = exportArea.textContent || '{}'; navigator.clipboard.writeText(j).then(()=>{ alert('JSON copied to clipboard') }).catch(()=>alert('Copy failed')); }
+  function downloadJson(){ const blob = new Blob([exportArea.textContent],'application/json'); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download = 'codm-loadout.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
+  function importJson(){ try{ const j = JSON.parse(importArea.value); applyImported(j); }catch(e){ alert('Invalid JSON') } }
+  function applyImported(j){ if(!j.weapon) return alert('Not a loadout'); categoryEl.value = j.weapon.category; populateWeapons(); weaponEl.value = j.weapon.id; updateWeapon();
+    attachmentsEl.querySelectorAll('select.attachment-select').forEach(s=>{ s.value='none'; const slot = s.dataset.slot; const chosen = (j.attachments||[]).find(a=>a.slot===slot); if(chosen) s.value = chosen.id; });
+    document.getElementById('perk1').value = (j.perks && j.perks[0]) || document.getElementById('perk1').options[0].value;
+    document.getElementById('perk2').value = (j.perks && j.perks[1]) || document.getElementById('perk2').options[0].value;
+    document.getElementById('skin').value = j.skin||''; computeAndRender();
+  }
+
+  // --- Testing simulations ---
+  function simulateTest(){ const mode = testMode.value; const cat = categoryEl.value; const w = (weapons[cat] && weapons[cat].find(x=>x.id===weaponEl.value)) || (weapons[cat] && weapons[cat][0]) || {name:'—',dmg:1,fire:60,range:10,acc:10}; const s = computeStats(w);
+    let log = '';
+    if(mode==='single'){
+      log += `Single target test:\nWeapon: ${w.name}\nDamage per hit: ${s.dmg}\nFire rate (RPM): ${s.fire}\nEstimated TTK on 100HP: `;
+      const rounds = Math.ceil(100/s.dmg); const seconds = Math.round((rounds / (s.fire/60))*100)/100;
+      log += `${rounds} rounds — ${seconds}s\n`;
+    } else if(mode==='sustained'){
+      const seconds = 10; const rounds = Math.round(s.fire/60*seconds); const totalDamage = Math.round(rounds * s.dmg);
+      log += `Sustained fire ${seconds}s:\nRounds: ${rounds}\nTotal damage: ${totalDamage}\nAvg DPS: ${Math.round((totalDamage/seconds)*10)/10}`;
+    } else if(mode==='burst'){
+      const br = 3; const hitChance = Math.min(0.98, s.acc/100); const expectedHits = (br * hitChance); const damage = Math.round(expectedHits * s.dmg*10)/10; log += `Burst (${br} rounds) expected damage (acc adjusted): ${damage}`;
+    }
+    testLog.textContent = log; animateTest(log);
+  }
+  function animateTest(log){ const old = dpsEl.style.transform || ''; dpsEl.style.transition='transform .18s'; dpsEl.style.transform='scale(1.06)'; setTimeout(()=>{ dpsEl.style.transform=old; },180); }
+
+  // --- Randomizer ---
+  function randomizeLoadout(){ const cats = Object.keys(weapons); categoryEl.value = cats[Math.floor(Math.random()*cats.length)]; populateWeapons(); const opts = weaponEl.options; if(opts.length){ weaponEl.value = opts[Math.floor(Math.random()*opts.length)].value; } updateWeapon();
+    attachmentsEl.querySelectorAll('select.attachment-select').forEach(s=>{ const choices = Array.from(s.options); const pick = choices[Math.floor(Math.random()*choices.length)]; s.value = pick.value; }); computeAndRender(); }
+
+  // --- Events ---
+  categoryEl.addEventListener('change',populateWeapons);
+  weaponEl.addEventListener('change',updateWeapon);
+  document.getElementById('saveBtn').addEventListener('click',saveCurrent);
+  exportBtn && exportBtn.addEventListener('click',()=>{ prompt('Copy this JSON', exportArea.textContent); });
+  copyJson && copyJson.addEventListener('click',exportJson);
+  downloadBtn && downloadBtn.addEventListener('click',downloadJson);
+  randomizeBtn && randomizeBtn.addEventListener('click',randomizeLoadout);
+  runTest && runTest.addEventListener('click',simulateTest);
+  importBtn && importBtn.addEventListener('click',importJson);
+  clearBtn && clearBtn.addEventListener('click',()=>{ importArea.value=''; testLog.textContent='Ready.' });
+
+  // init
+  populateWeapons();
+  loadSaved();
+  </script>
+</body>
+</html>
