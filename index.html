@@ -1,7 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
+ <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>CODM Loadout Builder — Extensive</title>
   <style>
@@ -12,10 +9,11 @@
     h1{font-size:18px;margin:0}
     .wrap{display:grid;grid-template-columns:380px 1fr;gap:18px;padding:18px}
     .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);padding:14px;border-radius:10px}
+
     label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
     select,input,button,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
-    /* Force weapon dropdown text to black for readability as requested */
-    select.weapon-select, select.attachment-select { color: #000 !important; background: #fff !important; }
+    /* Force weapon dropdown text to black for readability and attachments to white selects */
+    select.weapon-select, select.attachment-select, select.skin-select { color: #000 !important; background: #fff !important; }
     .section-title{font-weight:600;margin:8px 0 12px}
     .attachments{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
     .stat-bars{display:flex;gap:10px;margin-top:8px}
@@ -63,18 +61,24 @@
       <label style="margin-top:10px">Select Weapon</label>
       <select id="weapon" class="weapon-select"></select>
 
+      <label style="margin-top:10px">Skin / Camo</label>
+      <select id="skinSelect" class="skin-select"></select>
+
       <div class="section-title">Attachments (Gunsmith)</div>
       <div class="attachments" id="attachments"></div>
 
       <div class="section-title">Perks / Equipment</div>
       <div class="grid-row">
-        <select id="perk1"><option>Quick Fix</option><option>Ghost</option><option>Lightweight</option><option>Fast Recover</option></select>
-        <select id="perk2"><option>Dead Silence</option><option>Tracker</option><option>Alert</option><option>Persistence</option></select>
+        <select id="perkRed"><option>Lightweight</option><option>Flak Jacket</option><option>Double Time</option><option>Quick Fix</option></select>
+        <select id="perkGreen"><option>Ghost</option><option>Toughness</option><option>Cold-Blooded</option><option>Hardline</option></select>
+      </div>
+      <div style="margin-top:8px">
+        <select id="perkBlue"><option>Dead Silence</option><option>Alert</option><option>Tracker</option><option>Persistence</option></select>
       </div>
 
-      <div class="section-title">Customization</div>
-      <label>Camouflage / Skin (preview only)</label>
-      <input id="skin" placeholder="Arctic Camo, Carbon Fiber, etc" />
+      <div class="section-title" style="margin-top:12px">Customization</div>
+      <label>Custom tag (preview only)</label>
+      <input id="customTag" placeholder="e.g. Aggressive AR build" />
 
       <div class="controls">
         <button class="primary" id="saveBtn">Save Loadout</button>
@@ -92,7 +96,7 @@
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div>
             <div class="section-title">Live Preview & Stats</div>
-            <div class="muted">Choose attachments to see how they change damage, fire rate, range, accuracy and mobility.</div>
+            <div class="muted">Choose attachments & perks to see how they change damage, fire rate, range, accuracy and mobility.</div>
           </div>
           <div style="text-align:right">
             <div class="muted">Test Output:</div>
@@ -107,6 +111,8 @@
               <div id="weaponName" style="font-size:16px;font-weight:700; color:inherit;">—</div>
               <div class="muted" id="weaponCat">—</div>
               <div style="margin-top:8px" class="muted">Attachments: <span id="attSummary">—</span></div>
+              <div style="margin-top:6px" class="muted">Skin: <span id="skinSummary">—</span></div>
+              <div style="margin-top:6px" class="muted">Perks: <span id="perksSummary">—</span></div>
             </div>
           </div>
 
@@ -175,7 +181,7 @@
     'Assault Rifle': [
       {id:'m4',name:'M4',dmg:30,fire:720,range:55,acc:74,img:''},
       {id:'ak47',name:'AK-47',dmg:33,fire:555,range:60,acc:65,img:''},
-      {id:'ak117',name:'AK117',dmg:25,fire:770,range:52,acc:69,img:''}, // added AK117
+      {id:'ak117',name:'AK117',dmg:25,fire:770,range:52,acc:69,img:''},
       {id:'asm10',name:'ASM10',dmg:34,fire:570,range:58,acc:70,img:''},
       {id:'bk57',name:'BK57',dmg:27,fire:720,range:50,acc:66,img:''},
       {id:'lk24',name:'LK24',dmg:26,fire:660,range:54,acc:74,img:''},
@@ -263,7 +269,6 @@
   };
 
   // --- Category-specific gunsmith-style attachments (mimic CODM) ---
-  // Each weapon class maps slot names to arrays of real-ish CODM options (id, name, stat deltas)
   const attachmentsCatalogByCategory = {
     'Assault Rifle': {
       'Muzzle': [
@@ -302,7 +307,6 @@
         {id:'rubber',name:'Rubberized Grip Tape',dmg:0,fire:0,range:0,acc:4,mob:-1}
       ]
     },
-
     'SMG': {
       'Muzzle': [
         {id:'smg_comp',name:'Compensator',dmg:0,fire:0,range:0,acc:6,mob:-3},
@@ -333,7 +337,6 @@
         {id:'rgrip',name:'Rubberized Grip Tape',dmg:0,fire:0,range:0,acc:4,mob:-1}
       ]
     },
-
     'Sniper': {
       'Muzzle': [
         {id:'snip_sup',name:'Light Suppressor',dmg:-2,fire:0,range:-2,acc:6,mob:-2},
@@ -358,7 +361,6 @@
         {id:'snip_fmj',name:'FMJ',dmg:12,fire:0,range:6,acc:-2,mob:-2}
       ]
     },
-
     'LMG': {
       'Muzzle': [
         {id:'lmg_sup',name:'Monolithic Suppressor',dmg:0,fire:0,range:0,acc:4,mob:-3},
@@ -384,7 +386,6 @@
         {id:'3x',name:'3x Scope',dmg:0,fire:0,range:6,acc:6,mob:-3}
       ]
     },
-
     'Shotgun': {
       'Muzzle': [
         {id:'shot_choke',name:'Choke',dmg:6,fire:0,range:4,acc:2,mob:-2},
@@ -409,7 +410,6 @@
         {id:'reflex',name:'Reflex Sight',dmg:0,fire:0,range:0,acc:3,mob:0}
       ]
     },
-
     'Pistol': {
       'Muzzle': [
         {id:'pistol_sup',name:'Pistol Suppressor',dmg:-2,fire:0,range:-3,acc:3,mob:-1},
@@ -429,19 +429,44 @@
         {id:'small_red',name:'Mini Red Dot',dmg:0,fire:0,range:0,acc:3,mob:0}
       ]
     },
+    'Launcher': {},
+    'Melee': {}
+  };
 
-    'Launcher': {
-      // Launchers typically have no gunsmith attachments in CODM — keep minimal or none
-    },
+  // --- Skins (weapon-specific; sample skins per weapon id) ---
+  // Skins are cosmetic only here (no stat change) but are saved with the loadout.
+  const skinsByWeapon = {
+    // Assault Rifle
+    'ak117': ['Default', 'Crimson Fury (Epic)', 'Urban Camo (Rare)', 'Midnight Carbon (Legendary)'],
+    'm4': ['Default', 'Court Blue', 'Tactical Night', 'Whiteout'],
+    'ak47': ['Default', 'Bloodline', 'Desert Storm'],
+    'asm10': ['Default', 'Gold Foil', 'Rustic'],
+    'cr56': ['Default', 'Black Steel', 'Violet Fade'],
+    // SMG
+    'qq9': ['Default', 'Riptide', 'Flood'],
+    'fennec': ['Default', 'Inferno', 'Neon'],
+    // Sniper
+    'dlq33': ['Default', 'Hawk', 'Snowdrift'],
+    // LMG
+    'rpd': ['Default', 'Heavy Bronze'],
+    // Shotgun
+    'krm262': ['Default', 'Hunter\'s Mark'],
+    // Pistol
+    'mw11': ['Default', 'Slick'],
+    // generic fallback for others
+  };
 
-    'Melee': {
-      // Melee have no attachments
-    }
+  // --- Perk lists (realistic CODM-like names) ---
+  const perks = {
+    red: ['Lightweight','Double Time','Quick Fix','Flak Jacket','Tactician'],
+    green: ['Ghost','Toughness','Cold-Blooded','Hardline','Vulture'],
+    blue: ['Dead Silence','Alert','Tracker','Persistence','Spotter']
   };
 
   // --- DOM refs ---
   const categoryEl = document.getElementById('category');
   const weaponEl = document.getElementById('weapon');
+  const skinSelect = document.getElementById('skinSelect');
   const attachmentsEl = document.getElementById('attachments');
   const weaponNameEl = document.getElementById('weaponName');
   const weaponCatEl = document.getElementById('weaponCat');
@@ -470,27 +495,55 @@
   const modRange = document.getElementById('modRange');
   const modAcc = document.getElementById('modAcc');
 
-  // Helper: create select with class so we can style weapon options black
-  function makeSelect(className) {
-    const s = document.createElement('select');
-    if (className) s.classList.add(className);
-    return s;
+  const perkRedEl = document.getElementById('perkRed');
+  const perkGreenEl = document.getElementById('perkGreen');
+  const perkBlueEl = document.getElementById('perkBlue');
+  const customTagEl = document.getElementById('customTag');
+
+  // --- Utilities ---
+  function populatePerks(){
+    // populate perks dropdowns (if structure changes later)
+    function fill(sel, list){
+      sel.innerHTML='';
+      list.forEach(p => {
+        const o = document.createElement('option'); o.value = p; o.textContent = p; sel.appendChild(o);
+      });
+    }
+    fill(perkRedEl, perks.red);
+    fill(perkGreenEl, perks.green);
+    fill(perkBlueEl, perks.blue);
   }
 
-  // Populate weapons for selected category
   function populateWeapons() {
     const cat = categoryEl.value;
     weaponEl.innerHTML = '';
     (weapons[cat] || []).forEach(w=>{
-      const o = document.createElement('option');
-      o.value = w.id;
-      o.textContent = w.name;
-      // force black text inside select options by styling the select element (class applied in HTML/CSS)
-      weaponEl.appendChild(o);
+      const o = document.createElement('option'); o.value = w.id; o.textContent = w.name; weaponEl.appendChild(o);
     });
-    // ensure weapon select shows black text (we use .weapon-select class in HTML/CSS)
     updateWeapon();
     renderAttachments();
+    populateSkinsForWeapon();
+  }
+
+  function populateSkinsForWeapon(){
+    const wid = weaponEl.value;
+    skinSelect.innerHTML = '';
+    const list = skinsByWeapon[wid] || ['Default'];
+    list.forEach(s=>{
+      const o = document.createElement('option'); o.value = s; o.textContent = s; skinSelect.appendChild(o);
+    });
+    updateSkinSummary();
+  }
+
+  function updateWeapon(){
+    const cat = categoryEl.value;
+    const wid = weaponEl.value || (weapons[cat] && weapons[cat][0] && weapons[cat][0].id);
+    const w = (weapons[cat] || []).find(x=>x.id===wid) || {name:'—', dmg:1, fire:100, range:10, acc:10};
+    weaponNameEl.textContent = w.name;
+    weaponCatEl.textContent = cat;
+    document.getElementById('weaponImg').src = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='220' height='120'><rect width='100%' height='100%' rx='8' fill='rgba(255,255,255,0.02)'/><text x='50%' y='55%' text-anchor='middle' font-size='18' fill='%23cde6ff' font-family='Arial'>${w.name}</text></svg>`);
+    populateSkinsForWeapon();
+    computeAndRender();
   }
 
   // Render attachments UI per category (Gunsmith-like)
@@ -498,7 +551,6 @@
     attachmentsEl.innerHTML = '';
     const cat = categoryEl.value;
     const catalog = attachmentsCatalogByCategory[cat] || {};
-    // If nothing (launchers/melee) show info
     if(!Object.keys(catalog).length){
       const notice = document.createElement('div');
       notice.className = 'muted';
@@ -506,7 +558,6 @@
       attachmentsEl.appendChild(notice);
       return;
     }
-    // For each slot in category's catalog
     Object.keys(catalog).forEach(slot=>{
       const wrap = document.createElement('div');
       const label = document.createElement('label');
@@ -515,11 +566,9 @@
       const sel = document.createElement('select');
       sel.className = 'attachment-select';
       sel.dataset.slot = slot;
-      // add None option
       const none = document.createElement('option');
       none.value = 'none'; none.textContent = 'None';
       sel.appendChild(none);
-      // add options
       catalog[slot].forEach(a=>{
         const o = document.createElement('option');
         o.value = a.id;
@@ -531,17 +580,6 @@
       wrap.appendChild(sel);
       attachmentsEl.appendChild(wrap);
     });
-  }
-
-  function updateWeapon(){
-    const cat = categoryEl.value;
-    const wid = weaponEl.value || (weapons[cat] && weapons[cat][0] && weapons[cat][0].id);
-    const w = (weapons[cat] || []).find(x=>x.id===wid) || {name:'—', dmg:1, fire:100, range:10, acc:10};
-    document.getElementById('weaponName').textContent = w.name;
-    document.getElementById('weaponCat').textContent = cat;
-    // small SVG placeholder
-    document.getElementById('weaponImg').src = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='220' height='120'><rect width='100%' height='100%' rx='8' fill='rgba(255,255,255,0.02)'/><text x='50%' y='55%' text-anchor='middle' font-size='18' fill='%23cde6ff' font-family='Arial'>${w.name}</text></svg>`);
-    computeAndRender();
   }
 
   function getSelectedAttachments(){
@@ -597,7 +635,18 @@
     document.getElementById('st-acc').style.width = Math.min(100, (s.acc/100 * 100)) + '%';
     dpsEl.textContent = 'DPS: ' + s.dps;
     attSummary.textContent = s.chosen.map(a=>a.name).join(', ')||'None';
+    updateSkinSummary();
+    updatePerksSummary();
     exportCurrent();
+  }
+
+  function updateSkinSummary(){
+    const s = skinSelect.value || 'Default';
+    document.getElementById('skinSummary').textContent = s;
+  }
+  function updatePerksSummary(){
+    const p = [perkRedEl.value, perkGreenEl.value, perkBlueEl.value].filter(Boolean).join(' / ');
+    document.getElementById('perksSummary').textContent = p || '—';
   }
 
   function exportCurrent(){
@@ -609,10 +658,19 @@
     const cat = categoryEl.value;
     const w = (weapons[cat] && weapons[cat].find(x=>x.id===weaponEl.value)) || (weapons[cat] && weapons[cat][0]);
     const attachments = getSelectedAttachments().map(a=>({slot:a.slot,id:a.id,name:a.name}));
-    return {meta:{created:new Date().toISOString()}, weapon:{category:cat, id:w.id, name:w.name}, attachments, perks:[document.getElementById('perk1').value,document.getElementById('perk2').value], skin:document.getElementById('skin').value||null, stats:computeStats(w)};
+    const perksArr = [perkRedEl.value, perkGreenEl.value, perkBlueEl.value];
+    return {
+      meta:{created:new Date().toISOString()},
+      weapon:{category:cat, id:w.id, name:w.name},
+      skin: skinSelect.value || 'Default',
+      attachments,
+      perks: perksArr,
+      tag: customTagEl.value || null,
+      stats: computeStats(w)
+    };
   }
 
-  // --- Save / Load / Saved list ---
+  // --- Save / Load ---
   function loadSaved(){
     const raw = localStorage.getItem('codm_loadouts_v1');
     const parsed = raw ? JSON.parse(raw) : [];
@@ -634,13 +692,18 @@
     const raw = localStorage.getItem('codm_loadouts_v1');
     const list = raw?JSON.parse(raw):[]; const loadout = buildLoadoutObject(); list.unshift(loadout); localStorage.setItem('codm_loadouts_v1', JSON.stringify(list.slice(0,50)) ); loadSaved();
   }
-  function loadFromIndex(i){ const list = JSON.parse(localStorage.getItem('codm_loadouts_v1')||'[]'); const l = list[i]; if(!l) return alert('Not found');
+  function loadFromIndex(i){
+    const list = JSON.parse(localStorage.getItem('codm_loadouts_v1')||'[]'); const l = list[i]; if(!l) return alert('Not found');
     categoryEl.value = l.weapon.category; populateWeapons(); weaponEl.value = l.weapon.id; updateWeapon();
     // apply attachments
     attachmentsEl.querySelectorAll('select.attachment-select').forEach(s=>{ s.value='none'; const slot = s.dataset.slot; const chosen = (l.attachments||[]).find(a=>a.slot===slot); if(chosen) s.value = chosen.id; });
-    document.getElementById('perk1').value = l.perks[0] || document.getElementById('perk1').options[0].value;
-    document.getElementById('perk2').value = l.perks[1] || document.getElementById('perk2').options[0].value;
-    document.getElementById('skin').value = l.skin||'';
+    // perks
+    perkRedEl.value = (l.perks && l.perks[0]) || perkRedEl.options[0].value;
+    perkGreenEl.value = (l.perks && l.perks[1]) || perkGreenEl.options[0].value;
+    perkBlueEl.value = (l.perks && l.perks[2]) || perkBlueEl.options[0].value;
+    // skin & tag
+    skinSelect.value = l.skin || skinSelect.options[0].value;
+    customTagEl.value = l.tag || '';
     computeAndRender();
   }
   function deleteIndex(i){ const list = JSON.parse(localStorage.getItem('codm_loadouts_v1')||'[]'); list.splice(i,1); localStorage.setItem('codm_loadouts_v1', JSON.stringify(list)); loadSaved(); }
@@ -651,13 +714,20 @@
   function importJson(){ try{ const j = JSON.parse(importArea.value); applyImported(j); }catch(e){ alert('Invalid JSON') } }
   function applyImported(j){ if(!j.weapon) return alert('Not a loadout'); categoryEl.value = j.weapon.category; populateWeapons(); weaponEl.value = j.weapon.id; updateWeapon();
     attachmentsEl.querySelectorAll('select.attachment-select').forEach(s=>{ s.value='none'; const slot = s.dataset.slot; const chosen = (j.attachments||[]).find(a=>a.slot===slot); if(chosen) s.value = chosen.id; });
-    document.getElementById('perk1').value = (j.perks && j.perks[0]) || document.getElementById('perk1').options[0].value;
-    document.getElementById('perk2').value = (j.perks && j.perks[1]) || document.getElementById('perk2').options[0].value;
-    document.getElementById('skin').value = j.skin||''; computeAndRender();
+    perkRedEl.value = (j.perks && j.perks[0]) || perkRedEl.options[0].value;
+    perkGreenEl.value = (j.perks && j.perks[1]) || perkGreenEl.options[0].value;
+    perkBlueEl.value = (j.perks && j.perks[2]) || perkBlueEl.options[0].value;
+    skinSelect.value = j.skin || skinSelect.options[0].value;
+    customTagEl.value = j.tag || '';
+    computeAndRender();
   }
 
   // --- Testing simulations ---
-  function simulateTest(){ const mode = testMode.value; const cat = categoryEl.value; const w = (weapons[cat] && weapons[cat].find(x=>x.id===weaponEl.value)) || (weapons[cat] && weapons[cat][0]) || {name:'—',dmg:1,fire:60,range:10,acc:10}; const s = computeStats(w);
+  function simulateTest(){
+    const mode = testMode.value;
+    const cat = categoryEl.value;
+    const w = (weapons[cat] && weapons[cat].find(x=>x.id===weaponEl.value)) || (weapons[cat] && weapons[cat][0]) || {name:'—',dmg:1,fire:60,range:10,acc:10};
+    const s = computeStats(w);
     let log = '';
     if(mode==='single'){
       log += `Single target test:\nWeapon: ${w.name}\nDamage per hit: ${s.dmg}\nFire rate (RPM): ${s.fire}\nEstimated TTK on 100HP: `;
@@ -674,12 +744,34 @@
   function animateTest(log){ const old = dpsEl.style.transform || ''; dpsEl.style.transition='transform .18s'; dpsEl.style.transform='scale(1.06)'; setTimeout(()=>{ dpsEl.style.transform=old; },180); }
 
   // --- Randomizer ---
-  function randomizeLoadout(){ const cats = Object.keys(weapons); categoryEl.value = cats[Math.floor(Math.random()*cats.length)]; populateWeapons(); const opts = weaponEl.options; if(opts.length){ weaponEl.value = opts[Math.floor(Math.random()*opts.length)].value; } updateWeapon();
-    attachmentsEl.querySelectorAll('select.attachment-select').forEach(s=>{ const choices = Array.from(s.options); const pick = choices[Math.floor(Math.random()*choices.length)]; s.value = pick.value; }); computeAndRender(); }
+  function randomizeLoadout(){
+    const cats = Object.keys(weapons);
+    categoryEl.value = cats[Math.floor(Math.random()*cats.length)];
+    populateWeapons();
+    const opts = weaponEl.options;
+    if(opts.length) weaponEl.value = opts[Math.floor(Math.random()*opts.length)].value;
+    // random skin for that weapon
+    populateSkinsForWeapon();
+    skinSelect.selectedIndex = Math.floor(Math.random()*skinSelect.options.length);
+    // random perks
+    perkRedEl.selectedIndex = Math.floor(Math.random()*perkRedEl.options.length);
+    perkGreenEl.selectedIndex = Math.floor(Math.random()*perkGreenEl.options.length);
+    perkBlueEl.selectedIndex = Math.floor(Math.random()*perkBlueEl.options.length);
+    // random attachments (choose among each slot)
+    attachmentsEl.querySelectorAll('select.attachment-select').forEach(s=>{
+      const choices = Array.from(s.options); const pick = choices[Math.floor(Math.random()*choices.length)]; s.value = pick.value;
+    });
+    computeAndRender();
+  }
 
   // --- Events ---
   categoryEl.addEventListener('change',populateWeapons);
   weaponEl.addEventListener('change',updateWeapon);
+  skinSelect.addEventListener('change',()=>{ updateSkinSummary(); exportCurrent(); });
+  perkRedEl.addEventListener('change', updatePerksSummary);
+  perkGreenEl.addEventListener('change', updatePerksSummary);
+  perkBlueEl.addEventListener('change', updatePerksSummary);
+
   document.getElementById('saveBtn').addEventListener('click',saveCurrent);
   exportBtn && exportBtn.addEventListener('click',()=>{ prompt('Copy this JSON', exportArea.textContent); });
   copyJson && copyJson.addEventListener('click',exportJson);
@@ -690,9 +782,9 @@
   clearBtn && clearBtn.addEventListener('click',()=>{ importArea.value=''; testLog.textContent='Ready.' });
 
   // init
+  populatePerks();
   populateWeapons();
   loadSaved();
   </script>
 </body>
 </html>
-
